@@ -1,6 +1,7 @@
 # Using glob syntax
 syntax: glob
 
+**/.env
 **/.mypy_cache
 **/__pycache__
 **/venv
@@ -12,6 +13,7 @@ syntax: glob
 *.so
 build/
 dist/
+models/
 
 # Using regexp syntax
 syntax: regexp
