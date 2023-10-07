@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 import openai
-from dataclasses import dataclass, field
-from typing import Optional
 from dotenv import load_dotenv
 
 
