@@ -15,9 +15,10 @@
 import pytest
 from jsonformer import Jsonformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from confirms.core.settings import Settings
+from convince.core.settings import Settings
 
 
+@pytest.mark.skip(reason="Does not use quantized model, slow")
 def test_smoke():
     """Confirm that jsonformer package is installed correctly."""
 
