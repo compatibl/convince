@@ -14,7 +14,7 @@
 
 import pytest
 import tiktoken
-from confirms.core.settings import Settings
+from convince.core.settings import Settings
 
 
 def test_smoke():

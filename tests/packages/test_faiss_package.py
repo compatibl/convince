@@ -15,7 +15,7 @@
 import pytest
 import numpy as np
 import faiss  # noqa package faiss-cpu is used
-from confirms.core.settings import Settings
+from convince.core.settings import Settings
 
 
 def test_smoke():
