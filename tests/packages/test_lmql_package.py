@@ -14,7 +14,7 @@
 
 import pytest
 import lmql
-import confirms.core.settings
+import aiohttp
 
 
 @lmql.query
@@ -29,6 +29,21 @@ def two_times_two():
     '''
 
 
+@lmql.query
+def two_times_two_int_constraint():
+    # TODO Document results for
+    #   Two times two is: [N]"
+    #   Two times two: [N]"
+    '''lmql
+    argmax
+       "Two times two=[N]"
+    from
+       'openai/text-ada-001'
+    where
+        INT(N)
+    '''
+
+
 def test_smoke():
     """Confirm that lmql package is installed correctly."""
 
@@ -37,6 +52,17 @@ def test_smoke():
     result = int(response[0].variables["ANSWER"])
     assert prompt == "Two times two=4\n"
     assert result == 4
+
+
+def test_int_constraint():
+    """Test int constraint."""
+
+    response = two_times_two_int_constraint()
+    prompt = response[0].prompt
+    result = response[0].variables["N"]
+    assert prompt == "Two times two=4"
+    assert result == 4
+    pass
 
 
 if __name__ == '__main__':
