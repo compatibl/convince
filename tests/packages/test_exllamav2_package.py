@@ -9,7 +9,7 @@ from exllamav2.generator import ExLlamaV2BaseGenerator, ExLlamaV2Sampler
 
 def test_smoke():
     load_dotenv(override=False)
-    model_directory = os.path.join(os.getenv("CONFIRMS_MODEL_DIR"), "TheBloke_Llama-2-7B-Chat-GPTQ")
+    model_directory = os.path.join(os.getenv("CONFIRMS_MODEL_DIR"), "Llama-2-7b-Chat-GPTQ")
 
     config = ExLlamaV2Config()
     config.model_dir = model_directory
