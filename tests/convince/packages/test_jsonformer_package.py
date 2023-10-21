@@ -15,7 +15,7 @@
 import pytest
 from jsonformer import Jsonformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from convince.core.settings import Settings
+from cl.convince.settings import Settings
 
 
 @pytest.mark.skip(reason="Does not use quantized model, slow")

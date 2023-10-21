@@ -21,8 +21,8 @@ from langchain import LlamaCpp, LLMChain, PromptTemplate
 from langchain.callbacks import StreamingStdOutCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 
-from convince.core.llm.llm import Llm
-from convince.core.settings import Settings
+from cl.convince.llm.llm import Llm
+from cl.convince.settings import Settings
 
 
 @dataclass

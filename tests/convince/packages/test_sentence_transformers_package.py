@@ -14,7 +14,7 @@
 
 import pytest
 from sentence_transformers import SentenceTransformer
-from convince.core.settings import Settings
+from cl.convince.settings import Settings
 
 
 def test_smoke():

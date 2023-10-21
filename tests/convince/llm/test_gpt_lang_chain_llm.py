@@ -14,7 +14,7 @@
 
 import pytest
 
-from convince.core.llm.gpt_lang_chain_llm import GptLangChainLlm
+from cl.convince.llm.gpt_lang_chain_llm import GptLangChainLlm
 
 
 def test_smoke():

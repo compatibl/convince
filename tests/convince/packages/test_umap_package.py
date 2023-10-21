@@ -17,7 +17,7 @@ import umap  # noqa umap-learn
 import umap.plot # noqa umap-learn
 import matplotlib.pyplot as plt
 from sklearn.datasets import load_digits
-from convince.core.settings import Settings
+from cl.convince.settings import Settings
 
 
 def test_smoke():

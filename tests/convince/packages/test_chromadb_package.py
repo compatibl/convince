@@ -14,7 +14,7 @@
 
 import pytest
 import chromadb
-from convince.core.settings import Settings
+from cl.convince.settings import Settings
 
 
 def test_smoke():

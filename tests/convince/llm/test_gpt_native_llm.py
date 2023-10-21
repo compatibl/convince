@@ -14,7 +14,7 @@
 
 import pytest
 
-from convince.core.llm.gpt_native_llm import GptNativeLlm
+from cl.convince.llm.gpt_native_llm import GptNativeLlm
 
 
 def test_smoke():

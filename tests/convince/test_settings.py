@@ -14,7 +14,7 @@
 
 import pytest
 
-from convince.core.settings import Settings
+from cl.convince.settings import Settings
 
 
 def test_smoke():

@@ -18,8 +18,8 @@ from typing import Dict, Optional
 
 import openai
 
-from convince.core.llm.llm import Llm
-from convince.core.settings import Settings
+from cl.convince.llm.llm import Llm
+from cl.convince.settings import Settings
 
 
 @dataclass

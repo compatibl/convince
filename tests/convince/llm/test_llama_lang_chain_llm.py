@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 from langchain import PromptTemplate
 
-from convince.core.llm.llama_lang_chain_llm import LlamaLangChainLlm
+from cl.convince.llm.llama_lang_chain_llm import LlamaLangChainLlm
 
 
 def test_smoke():

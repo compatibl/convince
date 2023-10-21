@@ -17,8 +17,8 @@ from typing import List, Optional
 
 from langchain import LLMChain, OpenAI, PromptTemplate, ConversationChain
 
-from convince.core.llm.llm import Llm
-from convince.core.settings import Settings
+from cl.convince.llm.llm import Llm
+from cl.convince.settings import Settings
 
 
 @dataclass
