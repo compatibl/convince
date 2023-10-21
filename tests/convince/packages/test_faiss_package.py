@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-import numpy as np
 import faiss  # noqa package faiss-cpu is used
+import numpy as np
+import pytest
+
 from cl.convince.settings import Settings
 
 
@@ -27,9 +28,9 @@ def test_smoke():
     nq = 10000  # nb of queries
     np.random.seed(1234)  # make reproducible
     xb = np.random.random((nb, d)).astype('float32')
-    xb[:, 0] += np.arange(nb) / 1000.
+    xb[:, 0] += np.arange(nb) / 1000.0
     xq = np.random.random((nq, d)).astype('float32')
-    xq[:, 0] += np.arange(nq) / 1000.
+    xq[:, 0] += np.arange(nq) / 1000.0
 
     index = faiss.IndexFlatL2(d)  # build the index
     print(index.is_trained)

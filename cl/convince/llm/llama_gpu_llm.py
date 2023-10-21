@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from dataclasses import dataclass, field
 from typing import Optional
 
-from exllamav2 import ExLlamaV2Config, ExLlamaV2, ExLlamaV2Tokenizer, ExLlamaV2Cache
+from confirms.core.llm.llm import Llm
+from confirms.core.settings import Settings
+from exllamav2 import ExLlamaV2, ExLlamaV2Cache, ExLlamaV2Config, ExLlamaV2Tokenizer
 from exllamav2.generator import ExLlamaV2BaseGenerator, ExLlamaV2Sampler
 from huggingface_hub import hf_hub_download
-
-from confirms.core.llm.llm import Llm
-from dataclasses import dataclass, field
-
-from confirms.core.settings import Settings
 
 
 @dataclass
@@ -45,7 +43,6 @@ class LlamaGpuLlm(Llm):
 
         # Skip if already loaded
         if self._llm is None:
-
             # Set repo_id and GPU layers based on name
             model_filename = self.model_type
             if model_filename.startswith("llama-2-7b-chat"):
@@ -63,9 +60,7 @@ class LlamaGpuLlm(Llm):
                     f"Model {model_filename} is not found in {model_path} and will be downloaded from Hugging Face."
                     f"This may take from tens of minutes to hours time depending on network speed."
                 )
-                hf_hub_download(
-                    repo_id=repo_id, local_dir=settings.model_dir, local_dir_use_symlinks=False
-                )
+                hf_hub_download(repo_id=repo_id, local_dir=settings.model_dir, local_dir_use_symlinks=False)
 
             config = ExLlamaV2Config()
             config.model_dir = model_path

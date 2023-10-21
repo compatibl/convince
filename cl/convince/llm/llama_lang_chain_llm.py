@@ -47,7 +47,6 @@ class LlamaLangChainLlm(Llm):
 
         # Skip if already loaded
         if self._llm is None:
-
             # Set repo_id and GPU layers based on name
             model_filename = self.model_type
             if model_filename.startswith("llama-2-7b-chat."):

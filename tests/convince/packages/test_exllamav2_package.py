@@ -1,12 +1,12 @@
 import os
-import pytest
 import time
 
+import pytest
 import torch.cuda
 from dotenv import load_dotenv
 
 if torch.cuda.is_available():
-    from exllamav2 import ExLlamaV2, ExLlamaV2Config, ExLlamaV2Cache, ExLlamaV2Tokenizer
+    from exllamav2 import ExLlamaV2, ExLlamaV2Cache, ExLlamaV2Config, ExLlamaV2Tokenizer
     from exllamav2.generator import ExLlamaV2BaseGenerator, ExLlamaV2Sampler
 
 
@@ -48,8 +48,10 @@ def test_smoke():
 
     print(output)
     print()
-    print(f"Response generated in {time_total:.2f} seconds, {max_new_tokens} tokens, {max_new_tokens / time_total:.2f} "
-          "tokens/second")
+    print(
+        f"Response generated in {time_total:.2f} seconds, {max_new_tokens} tokens, {max_new_tokens / time_total:.2f} "
+        "tokens/second"
+    )
 
 
 if __name__ == '__main__':

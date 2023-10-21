@@ -15,6 +15,7 @@
 import pytest
 from jsonformer import Jsonformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
 from cl.convince.settings import Settings
 
 
@@ -35,11 +36,8 @@ def test_smoke():
             "name": {"type": "string"},
             "age": {"type": "number"},
             "is_student": {"type": "boolean"},
-            "courses": {
-                "type": "array",
-                "items": {"type": "string"}
-            }
-        }
+            "courses": {"type": "array", "items": {"type": "string"}},
+        },
     }
 
     prompt = "Generate a person's information based on the following schema:"

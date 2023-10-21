@@ -15,7 +15,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from langchain import LLMChain, OpenAI, PromptTemplate, ConversationChain
+from langchain import ConversationChain, LLMChain, OpenAI, PromptTemplate
 
 from cl.convince.llm.llm import Llm
 from cl.convince.settings import Settings
@@ -38,7 +38,6 @@ class GptLangChainLlm(Llm):
 
         # Skip if already loaded
         if self._llm is None:
-
             # Confirm that model type is valid
             gpt_model_types = ["gpt-3.5-turbo", "gpt-4"]
             if self.model_type not in gpt_model_types:
@@ -48,8 +47,7 @@ class GptLangChainLlm(Llm):
                 )
 
             self._llm = OpenAI(
-                model_name=self.model_type,
-                temperature=self.temperature if self.temperature is not None else 0.0
+                model_name=self.model_type, temperature=self.temperature if self.temperature is not None else 0.0
             )
 
     def completion(self, question: str, *, prompt: Optional[PromptTemplate] = None) -> str:

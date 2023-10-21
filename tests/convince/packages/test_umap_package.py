@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import matplotlib.pyplot as plt
 import pytest
 import umap  # noqa umap-learn
-import umap.plot # noqa umap-learn
-import matplotlib.pyplot as plt
+import umap.plot  # noqa umap-learn
 from sklearn.datasets import load_digits
+
 from cl.convince.settings import Settings
 
 

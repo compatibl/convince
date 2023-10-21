@@ -30,5 +30,6 @@ def test_smoke():
         output = llm.completion("What is two times two?")
         assert output == "\n\nAnswer: Two times two is equal to 4."
 
+
 if __name__ == '__main__':
     pytest.main([__file__])

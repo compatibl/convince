@@ -14,6 +14,7 @@
 
 import pytest
 import tiktoken
+
 from cl.convince.settings import Settings
 
 

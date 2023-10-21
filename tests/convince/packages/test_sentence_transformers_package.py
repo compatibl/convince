@@ -14,6 +14,7 @@
 
 import pytest
 from sentence_transformers import SentenceTransformer
+
 from cl.convince.settings import Settings
 
 
@@ -24,9 +25,11 @@ def test_smoke():
     model = SentenceTransformer('all-MiniLM-L6-v2')
 
     # Our sentences we like to encode
-    sentences = ['This framework generates embeddings for each input sentence',
-                 'Sentences are passed as a list of string.',
-                 'The quick brown fox jumps over the lazy dog.']
+    sentences = [
+        'This framework generates embeddings for each input sentence',
+        'Sentences are passed as a list of string.',
+        'The quick brown fox jumps over the lazy dog.',
+    ]
 
     # Sentences are encoded by calling model.encode()
     embeddings = model.encode(sentences)
