@@ -10,7 +10,6 @@ huggingface-hub>=0.17.1
 jsonformer>=0.12.0
 langchain>=0.0.285
 llama-cpp-python>=0.2.6
-lmql>=0.0.2.1
 matplotlib>=3.8.0
 numba>=0.58.0
 numpy>=1.25.2
