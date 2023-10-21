@@ -2,11 +2,15 @@ import os
 import pytest
 import time
 
+import torch.cuda
 from dotenv import load_dotenv
-from exllamav2 import ExLlamaV2, ExLlamaV2Config, ExLlamaV2Cache, ExLlamaV2Tokenizer
-from exllamav2.generator import ExLlamaV2BaseGenerator, ExLlamaV2Sampler
+
+if torch.cuda.is_available():
+    from exllamav2 import ExLlamaV2, ExLlamaV2Config, ExLlamaV2Cache, ExLlamaV2Tokenizer
+    from exllamav2.generator import ExLlamaV2BaseGenerator, ExLlamaV2Sampler
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA")
 def test_smoke():
     load_dotenv(override=False)
     model_directory = os.path.join(os.getenv("CONFIRMS_MODEL_DIR"), "Llama-2-7b-Chat-GPTQ")
