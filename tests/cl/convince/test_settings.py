@@ -20,6 +20,8 @@ from cl.convince.settings import Settings
 def test_smoke():
     """Run a smoke test for settings."""
     settings = Settings()
+
+    # TODO: Test for the presence of other keys
     assert settings.openai_api_key is not None
 
 
