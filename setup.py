@@ -12,7 +12,7 @@ with open('./tools/cl/convince/package_requirements.txt') as convince_package_re
 
 setuptools.setup(
     name='convince',
-    version='0.0.1',
+    version='0.0.2',
     author='The Project Contributors',
     description='Better instruction following for large language models',
     license='Apache Software License',
