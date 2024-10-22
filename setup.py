@@ -3,8 +3,12 @@ import setuptools
 with open('./README.md', 'r') as readme_file:
     readme = readme_file.read()
 
-with open('./tools/cl/convince/install_requirements.txt') as install_requirements:
-    install_requires = [line.strip() for line in install_requirements.readlines()]
+# Gather package requirements from all packages in monorepo
+install_requires = []
+with open('./tools/cl/runtime/package_requirements.txt') as runtime_package_requirements:
+    install_requires.extend(line.strip() for line in runtime_package_requirements.readlines())
+with open('./tools/cl/convince/package_requirements.txt') as convince_package_requirements:
+    install_requires.extend(line.strip() for line in convince_package_requirements.readlines())
 
 setuptools.setup(
     name='convince',
