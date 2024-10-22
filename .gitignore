@@ -7,17 +7,15 @@ syntax: glob
 **/.secrets.*
 **/__pycache__
 **/venv
-*.db
 *.egg
 *.egg-info/
 *.idea
-*.png
 *.py[cod]
 *.so
+*.sqlite
 logs/
 build/
 dist/
-wwwroot/
 
 # Using regexp syntax
 syntax: regexp

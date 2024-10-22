@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cl.runtime.prebuild.copyright_header import check_copyright_headers
+from dataclasses import dataclass
+from cl.convince.entries.entry import Entry
+from cl.convince.llms.llm_key import LlmKey
+from cl.convince.prompts.prompt_key import PromptKey
+from cl.runtime.records.dataclasses_extensions import missing
 
-# Check copyright headers and fix missing trailing blank line
-# All other copyright header errors cause an exception
-if __name__ == '__main__':
 
-    # Fix or report errors where copyright header is missing, incorrect, or not followed by a blank line
-    check_copyright_headers(fix_trailing_blank_line=True, verbose=True)
+@dataclass(slots=True, kw_only=True)
+class PromptEntry(Entry):
+    """Uses an LLM prompt for the implementation."""
+
+    llm: LlmKey = missing()
+    """LLM used to process the entry."""
+
+    prompt: PromptKey = missing()
+    """Prompt used to process the entry."""

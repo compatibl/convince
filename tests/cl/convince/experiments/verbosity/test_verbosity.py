@@ -16,8 +16,7 @@ import pytest
 from cl.runtime.context.testing_context import TestingContext
 from cl.runtime.plots.group_bar_plot import GroupBarPlot
 from cl.runtime.testing.pytest.pytest_fixtures import local_dir_fixture
-from cl.runtime.testing.regression_guard import RegressionGuard
-from stubs.cl.convince.experiments.stub_llms import stub_mini_llms
+from stubs.cl.convince.experiments.stub_llms import get_stub_mini_llms
 
 
 def _get_question(i: int):
@@ -42,8 +41,11 @@ def test_verbosity(local_dir_fixture):
     with TestingContext():
 
         reps = 2
-        plot = GroupBarPlot()
+        plot = GroupBarPlot(plot_id="verbosity")
         plot.values = []
+        plot.bar_labels = []
+        plot.group_labels = []
+        stub_mini_llms = get_stub_mini_llms()
         for llm in stub_mini_llms:
 
             # Calculate
@@ -51,15 +53,12 @@ def test_verbosity(local_dir_fixture):
             extended_sum = sum(llm.completion(_get_extended_prompt(i + 1)) == str(pow(i + 1, 2)) for i in range(reps))
 
             # Add to plot
+            plot.bar_labels.extend([llm.llm_id] * 2)
+            plot.group_labels.extend(["Simple", "Extended"])
             plot.values.extend([simple_sum / reps, extended_sum / reps])
 
-        # Apply labels
-        plot.bar_labels = [llm.llm_id for llm in stub_mini_llms]
-        plot.group_labels = ["Simple", "Extended"]
-
-        # Create and save
-        fig = plot.create_figure()
-        fig.savefig("test_verbosity.png")
+        # Save
+        plot.save_png()
 
 
 if __name__ == "__main__":

@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cl.runtime.prebuild.init_files import check_init_files
+from cl.convince.prompts.prompt_key import PromptKey
 
-if __name__ == '__main__':
+cls = PromptKey
 
-    # Create __init__.py files in subdirectories except for tests
-    check_init_files(apply_fix=True, verbose=True)
+
+class PromptKeys:
+    """PromptKey constants."""
+
+    ANNOTATING_RETRIEVER_PROMPT: cls = cls(prompt_id="AnnotatingRetrieverPrompt")
+    """Instructs the model to surround the requested parameter by curly braces for subsequent retrieval."""
+
+

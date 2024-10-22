@@ -11,8 +11,7 @@ default:
     - cl.convince
     - stubs.cl.runtime
     - stubs.cl.convince
-  runtime_context_data_source_class: cl.runtime.storage.sql.sqlite_data_source.SqliteDataSource
-  runtime_context_data_source_id: temp.convince.default
+  runtime_context_db_class: cl.runtime.db.sql.sqlite_db.SqliteDb
 
   # Documented in ApiSettings class
   runtime_api_host_name: localhost
@@ -29,6 +28,3 @@ test:
 
   # Documented in LogSettings class
   runtime_log_filename_prefix: tests
-
-  # Documented in PlotlySettings class
-  runtime_plotly_show_limit: 0
