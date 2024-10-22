@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
-from cl.convince.experiments.experiment import Experiment
+from cl.runtime.prebuild.init_files import check_init_files
 
+if __name__ == '__main__':
 
-@dataclass(slots=True, kw_only=True)
-class CategoricalExperiment(Experiment):
-    """Analyze the results of category (class label) assignment trials."""
+    # Create __init__.py files in subdirectories except for tests
+    check_init_files(apply_fix=True, verbose=True)

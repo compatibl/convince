@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cl.convince.prompts.prompt_key import PromptKey
+from cl.runtime.prebuild.copyright_header import check_copyright_headers
 
-cls = PromptKey
+# Check copyright headers and fix missing trailing blank line
+# All other copyright header errors cause an exception
+if __name__ == '__main__':
 
-
-class PromptKeys:
-    """PromptKey constants."""
-
-    ANNOTATING_RETRIEVER_PROMPT: cls = cls(prompt_id="AnnotatingRetrieverPrompt")
-    """Instructs the model to surround the requested parameter by curly braces for subsequent retrieval."""
-
-
+    # Fix or report errors where copyright header is missing, incorrect, or not followed by a blank line
+    check_copyright_headers(fix_trailing_blank_line=True, verbose=True)
