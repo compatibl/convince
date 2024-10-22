@@ -25,12 +25,14 @@ from cl.runtime.serialization.string_serializer import StringSerializer
 from cl.runtime.tasks.instance_method_task import InstanceMethodTask
 from cl.runtime.tasks.task_run import TaskRun
 from cl.runtime.tasks.task_status_enum import TaskStatusEnum
-from stubs.cl.runtime.decorators.stub_handlers import StubHandlers
-from stubs.cl.runtime.decorators.stub_handlers_key import StubHandlersKey
+from stubs.cl.runtime import StubHandlers
+from stubs.cl.runtime.records.for_dataclasses.stub_dataclass_handlers_key import StubHandlersKey
 
 # Create handler task
-task = InstanceMethodTask.from_key(
-    task_id="abc", key=StubHandlersKey(stub_id="abc"), method=StubHandlers.instance_handler_1a
+task = InstanceMethodTask.create(
+    task_id="abc",
+    record_or_key=StubHandlersKey(stub_id="abc"),
+    method_callable=StubHandlers.run_instance_method_1a,
 )
 
 # Get handler task key
@@ -41,14 +43,19 @@ task_key_str = key_serializer.serialize_key(task.get_key())
 t = DatetimeUtil.now()
 queue_key = handler_queue.get_key()
 task_runs = [
-    TaskRun(queue=queue_key, task=task, submit_time=t, update_time=t, status=TaskStatusEnum.Pending),
-    TaskRun(queue=queue_key, task=task, submit_time=t, update_time=t, status=TaskStatusEnum.Failed),
-    TaskRun(queue=queue_key, task=task, submit_time=t, update_time=t, status=TaskStatusEnum.Completed),
+    TaskRun(queue=queue_key, task=task, submit_time=t, update_time=t, status=TaskStatusEnum.PENDING),
+    TaskRun(queue=queue_key, task=task, submit_time=t, update_time=t, status=TaskStatusEnum.FAILED),
+    TaskRun(queue=queue_key, task=task, submit_time=t, update_time=t, status=TaskStatusEnum.COMPLETED),
 ]
+
+# Init task runs
+for task_run in task_runs:
+    task_run.init()
+
 requests = [
     {
         "task_run_ids": [str(task_run.task_run_id) for task_run in task_runs],
-        "data_source": "DEPRECATED",
+        "db": "DEPRECATED",  # TODO: Review and remove
         "dataset": "",
     }
 ]
@@ -57,7 +64,6 @@ requests = [
 def test_method():
     """Test coroutine for /tasks/run/status route."""
 
-    # TODO: Use TestingContext instead
     with TestingContext() as context:
         context.save_one(task)
         context.save_many(task_runs)

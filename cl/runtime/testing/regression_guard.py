@@ -13,25 +13,21 @@
 # limitations under the License.
 
 import difflib
-import filecmp
-import inspect
 import os
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 from typing import ClassVar
 from typing import Dict
-from typing import Iterable
 from typing import Literal
-from typing import cast
-import inflection
 import yaml
 from typing_extensions import Self
+from cl.runtime.context.env_util import EnvUtil
 from cl.runtime.records.protocols import is_key
 from cl.runtime.records.protocols import is_record
 from cl.runtime.schema.field_decl import primitive_types
 from cl.runtime.serialization.dict_serializer import DictSerializer
 from cl.runtime.serialization.string_serializer import StringSerializer
-from cl.runtime.testing.stack_util import StackUtil
 
 _supported_extensions = ["txt"]
 """The list of supported output file extensions (formats)."""
@@ -95,12 +91,11 @@ class RegressionGuard:
         Args:
             ext: File extension (format) without the dot prefix, defaults to 'txt'
             channel: Dot-delimited string for the channel or None for no channel
-            test_function_pattern: Glob pattern to identify the test function or method in stack frame,
-                                   defaults to 'test_*'
+            test_function_pattern: Glob pattern for function or method in stack frame, defaults to 'test_*'
         """
 
         # Find base path by examining call stack
-        base_path = StackUtil.get_base_dir(test_function_pattern=test_function_pattern)
+        base_path = EnvUtil.get_env_dir(test_function_pattern=test_function_pattern)
 
         # Make channel the filename prefix with dot delimiter if specified
         if channel is not None and channel != "":
@@ -246,7 +241,7 @@ class RegressionGuard:
 
         if os.path.exists(expected_path):
             # Expected file exists, compare
-            if filecmp.cmp(received_path, expected_path, shallow=False):
+            if self.__cmp_files(received_path, expected_path):
                 # Received and expected match, delete the received file and diff file
                 os.remove(received_path)
                 if os.path.exists(diff_path):
@@ -325,7 +320,9 @@ class RegressionGuard:
         elif is_record(value_type):
             return data_serializer.serialize_data(value)
         elif is_key(value_type):
-            return key_serializer.serialize_data(value)
+            return key_serializer.serialize_key(value)
+        elif issubclass(value_type, Enum):
+            return str(value)
         elif hasattr(value_type, "__iter__"):
             return "\n".join(map(self._format_txt, value)) + "\n"
         else:
@@ -347,3 +344,15 @@ class RegressionGuard:
         """The diff between received and expected is written to 'channel.diff.ext' located next to the unit test."""
         result = f"{self.output_path}{file_type}.{self.ext}"
         return result
+
+    def __cmp_files(self, file_path_a: str, file_path_b: str) -> bool:
+        """Compare two files ignoring line endings."""
+        with open(file_path_a, "r") as file_a, open(file_path_b, "r") as file_b:
+            for line_a, line_b in zip(file_a, file_b):
+                # Strip line endings before comparing
+                if line_a.rstrip("\r\n") != line_b.rstrip("\r\n"):
+                    return False
+            # Check if there are any remaining lines in either file
+            if file_a.readline() or file_b.readline():
+                return False
+        return True

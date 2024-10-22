@@ -25,10 +25,11 @@ from cl.runtime.records.protocols import KeyProtocol
 from cl.runtime.schema.schema import Schema
 
 # TODO (Roman): remove dependency from dict_serializer
+from cl.runtime.serialization.dict_serializer import DictSerializer
 from cl.runtime.serialization.dict_serializer import alias_dict
 from cl.runtime.serialization.dict_serializer import get_type_dict
-from cl.runtime.serialization.string_value_parser import StringValueCustomType
-from cl.runtime.serialization.string_value_parser import StringValueParser
+from cl.runtime.serialization.string_value_parser_enum import StringValueCustomTypeEnum
+from cl.runtime.serialization.string_value_parser_enum import StringValueParser
 
 primitive_type_names = ["NoneType", "str", "float", "int", "bool", "date", "time", "datetime", "bytes", "UUID"]
 """Detect primitive type by checking if class name is in this list."""
@@ -51,25 +52,29 @@ class StringSerializer:
 
         value_custom_type = StringValueParser.get_custom_type(data)
 
-        if value_custom_type in [StringValueCustomType.data, StringValueCustomType.dict, StringValueCustomType.list]:
+        if value_custom_type in [
+            StringValueCustomTypeEnum.DATA,
+            StringValueCustomTypeEnum.DICT,
+            StringValueCustomTypeEnum.LIST,
+        ]:
             raise ValueError(f"Value {str(data)} of type {type(data)} is not supported in key.")
 
         if value_custom_type in [
-            StringValueCustomType.date,
-            StringValueCustomType.datetime,
-            StringValueCustomType.time,
+            StringValueCustomTypeEnum.DATE,
+            StringValueCustomTypeEnum.DATETIME,
+            StringValueCustomTypeEnum.TIME,
         ]:
             result = data.isoformat()
-        elif value_custom_type == StringValueCustomType.enum:
+        elif value_custom_type == StringValueCustomTypeEnum.ENUM:
             # Get enum short name and cache to type_dict
             short_name = alias_dict[type_] if (type_ := type(data)) in alias_dict else type_.__name__
             type_dict = get_type_dict()
             type_dict[short_name] = type_
 
             result = f"{short_name}.{data.name}"
-        elif value_custom_type == StringValueCustomType.uuid:
+        elif value_custom_type == StringValueCustomTypeEnum.UUID:
             result = str(data)
-        elif value_custom_type == StringValueCustomType.bytes:
+        elif value_custom_type == StringValueCustomTypeEnum.BYTES:
             result = base64.b64encode(data).decode()
         else:
             result = str(data)
@@ -77,25 +82,25 @@ class StringSerializer:
         return StringValueParser.add_type_prefix(result, value_custom_type)
 
     @classmethod
-    def _deserialize_key_token(cls, data: str, custom_type: StringValueCustomType | None) -> Any:
+    def _deserialize_key_token(cls, data: str, custom_type: StringValueCustomTypeEnum | None) -> Any:
         """Deserialize key string token of custom type."""
 
         if custom_type is None:
             return data if data != "" else None
 
-        if custom_type == StringValueCustomType.date:
+        if custom_type == StringValueCustomTypeEnum.DATE:
             return dt.date.fromisoformat(data)
-        elif custom_type == StringValueCustomType.datetime:
+        elif custom_type == StringValueCustomTypeEnum.DATETIME:
             return dt.datetime.fromisoformat(data)
-        elif custom_type == StringValueCustomType.time:
+        elif custom_type == StringValueCustomTypeEnum.TIME:
             return dt.time.fromisoformat(data)
-        elif custom_type == StringValueCustomType.bool:
-            return True if data.lower() == "true" else False
-        elif custom_type == StringValueCustomType.int:
+        elif custom_type == StringValueCustomTypeEnum.BOOL:
+            return DictSerializer._deserialize_primitive(data, "bool")
+        elif custom_type == StringValueCustomTypeEnum.INT:
             return int(data)
-        elif custom_type == StringValueCustomType.float:
+        elif custom_type == StringValueCustomTypeEnum.FLOAT:
             return float(data)
-        elif custom_type == StringValueCustomType.enum:
+        elif custom_type == StringValueCustomTypeEnum.ENUM:
             enum_type, enum_value = data.split(".")
             type_dict = get_type_dict()
             deserialized_type = type_dict.get(enum_type, None)  # noqa
@@ -105,11 +110,11 @@ class StringSerializer:
                     f"Ensure all serialized enums are included in package import settings."
                 )
 
-            # get enum value
+            # Get enum value
             return deserialized_type[enum_value]  # noqa
-        elif custom_type == StringValueCustomType.uuid:
+        elif custom_type == StringValueCustomTypeEnum.UUID:
             return UUID(data)
-        elif custom_type == StringValueCustomType.bytes:
+        elif custom_type == StringValueCustomTypeEnum.BYTES:
             return base64.b64decode(data.encode())
         else:
             return data
@@ -133,7 +138,7 @@ class StringSerializer:
             # TODO (Roman): consider to have separated cache dict for key types
             type_dict = get_type_dict()
             type_dict[key_short_name] = type_
-            type_token = StringValueParser.add_type_prefix(key_short_name, StringValueCustomType.key)
+            type_token = StringValueParser.add_type_prefix(key_short_name, StringValueCustomTypeEnum.KEY)
             result = f"{type_token};{result}"
 
         return result
@@ -165,22 +170,22 @@ class StringSerializer:
                 )
         """
 
-        # contains slot values
+        # Contains slot values
         slot_values: Dict[str, Any] = {}
 
-        # init slots iterator if type_ is specified
+        # Init slots iterator if type_ is specified
         slots_iterator = iter(type_.__slots__) if type_ else None
 
-        # reserve first slot from slots iterator
+        # Reserve first slot from slots iterator
         slot = next(slots_iterator) if slots_iterator else None
 
-        # iterate over tokens using tokens iterator
+        # Iterate over tokens using tokens iterator
         while token := next(tokens_iterator, None):
-            # parse token to value and custom type
+            # Parse token to value and custom type
             token, token_type = StringValueParser.parse(token)
 
-            # if token is key get type and fill embedded key slots recursively using the same iterator instance
-            if token_type == StringValueCustomType.key:
+            # If token is key get type and fill embedded key slots recursively using the same iterator instance
+            if token_type == StringValueCustomTypeEnum.KEY:
                 # TODO (Roman): verify proper way to get type in serialization.
                 current_type = Schema.get_type_by_short_name(token)
 
@@ -192,23 +197,23 @@ class StringSerializer:
 
                 key = self._fill_key_slots(tokens_iterator, current_type)
 
-                # slots_iterator - None, means the root key object, so return it, otherwise assign the associated slot
+                # slots_iterator == None means the root key object, so return it, otherwise assign the associated slot
                 if slots_iterator is None:
                     return key
                 else:
                     slot_values[slot] = key
             else:
-                # deserialize token and assign the associated slot
+                # Deserialize token and assign the associated slot
                 slot_values[slot] = self._deserialize_key_token(token, token_type)
 
-            # reserve next slot for next token
+            # Reserve next slot for next token
             slot = next(slots_iterator, None)
 
-            # if the slots are over - break.
+            # If the slots are over - break.
             if slot is None:
                 break
 
-        # construct final key object
+        # Construct final key object
         return type_(**slot_values)
 
     def deserialize_key(self, data: str, type_: Type | None = None) -> KeyProtocol:

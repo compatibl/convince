@@ -13,13 +13,9 @@
 # limitations under the License.
 
 from pydantic import BaseModel
-from pydantic import ValidationError
 from cl.runtime import Context
-from cl.runtime.backend.core.base_type_info import BaseTypeInfo
-from cl.runtime.backend.core.tab_info import TabInfo
-from cl.runtime.primitive.string_util import StringUtil
+from cl.runtime.log.exceptions.user_error import UserError
 from cl.runtime.routers.entity.save_request import SaveRequest
-from cl.runtime.serialization.dict_serializer import get_type_dict
 from cl.runtime.serialization.string_serializer import StringSerializer
 from cl.runtime.serialization.ui_dict_serializer import UiDictSerializer
 
@@ -34,7 +30,6 @@ class SaveResponse(BaseModel):
     """String representation of the key for the saved record."""
 
     class Config:
-        alias_generator = StringUtil.to_pascal_case
         populate_by_name = True
 
     @staticmethod
@@ -52,7 +47,7 @@ class SaveResponse(BaseModel):
             ui_record["OpenedTabs"] = [
                 {
                     **{k: v for k, v in item.items() if k != "Type"},
-                    "Type_": {**item["Type"], "_t": "BaseTypeInfo"},
+                    "Type": {**item["Type"], "_t": "BaseTypeInfo"},
                     "_t": "TabInfo",
                 }
                 for item in opened_tabs
@@ -73,9 +68,10 @@ class SaveResponse(BaseModel):
                 record_type=type(record),
                 record_or_key=record.get_key(),
                 dataset=request.dataset,
+                is_record_optional=True,
             )
             if existing_record is not None:
-                raise RuntimeError(f"Record with key {str(record)} already exists.")
+                raise UserError(f"Record with key {str(record)} already exists.")
 
         if request.old_record_key is not None and request.old_record_key != key_serializer.serialize_key(record):
             old_record_key_obj = key_serializer.deserialize_key(request.old_record_key, type(record.get_key()))

@@ -13,40 +13,64 @@
 # limitations under the License.
 
 import logging
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import ClassVar
 from typing import Iterable
+from typing import Iterator
 from typing import List
+from typing import Optional
 from typing import Type
+from cl.runtime.backend.core.user_key import UserKey
 from cl.runtime.context.context_key import ContextKey
+from cl.runtime.db.db_key import DbKey
+from cl.runtime.db.protocols import TKey
+from cl.runtime.db.protocols import TRecord
+from cl.runtime.log.exceptions.user_error import UserError
+from cl.runtime.log.log_entry import LogEntry
+from cl.runtime.log.log_entry_level_enum import LogEntryLevelEnum
 from cl.runtime.log.log_key import LogKey
+from cl.runtime.log.user_log_entry import UserLogEntry
 from cl.runtime.records.dataclasses_extensions import missing
 from cl.runtime.records.protocols import KeyProtocol
 from cl.runtime.records.protocols import RecordProtocol
 from cl.runtime.records.protocols import is_key
 from cl.runtime.records.record_mixin import RecordMixin
 from cl.runtime.settings.context_settings import ContextSettings
-from cl.runtime.storage.data_source_key import DataSourceKey
-from cl.runtime.storage.protocols import TKey
-from cl.runtime.storage.protocols import TRecord
 
 root_context_types_str = """
 The following root context types can be used in the outermost 'with' clause:
     - ProcessContext: Context for launching a process, use in __main__
-    - HandlerContext: Context for invoking a handler
     - TestingContext: Context for running unit tests
 """
+
+_context_stack: ContextVar[Optional[List["Context"]]] = ContextVar("context_stack", default=None)
+"""
+Context adds self to the stack on __enter__ and removes self on __exit__.
+Each asynchronous context has its own stack.
+"""
+
+
+@contextmanager
+def request_cycle_context() -> Iterator[None]:
+    """Context manager to create isolated queue of contexts"""
+    token = _context_stack.set([])
+    yield
+    _context_stack.reset(token)
 
 
 @dataclass(slots=True, kw_only=True)
 class Context(ContextKey, RecordMixin[ContextKey]):
-    """Protocol implemented by context objects providing logging, data source, dataset, and progress reporting."""
+    """Protocol implemented by context objects providing logging, database, dataset, and progress reporting."""
+
+    user: UserKey = missing()
+    """Current user, 'Context.current().user' is used if not specified."""
 
     log: LogKey = missing()
     """Log of the context, 'Context.current().log' is used if not specified."""
 
-    data_source: DataSourceKey = missing()
-    """Data source of the context, 'Context.current().data_source' is used if not specified."""
+    db: DbKey = missing()
+    """Database of the context, 'Context.current().db' is used if not specified."""
 
     dataset: str = missing()
     """Dataset of the context, 'Context.current().dataset' is used if not specified."""
@@ -54,31 +78,31 @@ class Context(ContextKey, RecordMixin[ContextKey]):
     is_deserialized: bool = False
     """Use this flag to determine if this context instance has been deserialized from data."""
 
-    __context_stack: ClassVar[List["Context"]] = []  # TODO: Set using ContextVars
-    """New current context is pushed to the context stack using 'with Context(...)' clause."""
-
     def __post_init__(self):
         """Set fields to their values in 'Context.current()' if not specified."""
 
         # Do not execute this code on deserialized context instances (e.g. when they are passed to a task queue)
         if not self.is_deserialized:
             # Set fields that are not specified to their values from 'Context.current()'
+            if self.user is None:
+                self._root_context_field_not_set_error("user")
+                self.user = Context.current().user
             if self.log is None:
                 self._root_context_field_not_set_error("log")
                 self.log = Context.current().log
-            if self.data_source is None:
-                self._root_context_field_not_set_error("data_source")
-                self.data_source = Context.current().data_source
+            if self.db is None:
+                self._root_context_field_not_set_error("db")
+                self.db = Context.current().db
             if self.dataset is None:
                 self._root_context_field_not_set_error("dataset")
                 self.dataset = Context.current().dataset
 
         # Replace fields that are set as keys by records from storage
-        # First, load 'data_source' field of this context using 'Context.current()'
-        if is_key(self.data_source):
-            self.data_source = Context.current().load_one(DataSourceKey, self.data_source)
+        # First, load 'db' field of this context using 'Context.current()'
+        if is_key(self.db):
+            self.db = Context.current().load_one(DbKey, self.db)
 
-        # After this all remaining fields can be loaded using data source from this context
+        # After this all remaining fields can be loaded using database from this context
         if is_key(self.log):
             self.log = self.load_one(LogKey, self.log)
 
@@ -88,8 +112,9 @@ class Context(ContextKey, RecordMixin[ContextKey]):
     @classmethod
     def current(cls):
         """Return the current context or None if not set."""
-        if len(cls.__context_stack) > 0:
-            return cls.__context_stack[-1]
+        context_stack = _context_stack.get()
+        if context_stack and len(context_stack) > 0:
+            return context_stack[-1]
         else:
             raise RuntimeError(
                 "Current context is not set, use 'with' clause with a root context type to set."
@@ -99,25 +124,56 @@ class Context(ContextKey, RecordMixin[ContextKey]):
     def __enter__(self):
         """Supports 'with' operator for resource disposal."""
 
+        context_stack = _context_stack.get()
+        if context_stack is None:
+            # Context activated without middleware, create a new context stack
+            context_stack = []
+            _context_stack.set(context_stack)
+
+        # Check if self is already the current context
+        if context_stack and context_stack[-1] is self:
+            raise RuntimeError("The context activated using 'with' operator is already current.")
+
         # Set current context on entering 'with Context(...)' clause
-        self.__context_stack.append(self)
+        context_stack.append(self)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Supports 'with' operator for resource disposal."""
 
-        # Restore the previous current context on exiting from 'with Context(...)' clause
-        if len(self.__context_stack) > 0:
-            current_context = self.__context_stack.pop()
-        else:
+        if exc_val is not None:
+            # Save log entry to the database
+            # Get log entry type and level
+            if isinstance(exc_val, UserError):
+                log_type = UserLogEntry
+                level = LogEntryLevelEnum.USER_ERROR
+            else:
+                log_type = LogEntry
+                level = LogEntryLevelEnum.ERROR
+
+            # Create log entry
+            log_entry = log_type(  # noqa
+                message=str(exc_val),
+                level=level,
+            )
+            log_entry.init()
+
+            # Save occurred error to self db
+            self.save_one(log_entry)
+
+        context_stack = _context_stack.get()
+
+        if context_stack is None or not bool(context_stack):
             raise RuntimeError("Current context must not be cleared inside 'with Context(...)' clause.")
 
+        # Restore the previous current context on exiting from 'with Context(...)' clause
+        current_context = context_stack.pop()
         if current_context is not self:
             raise RuntimeError("Current context must only be modified by 'with Context(...)' clause.")
 
-        # TODO: Support resource disposal for the data source
-        if self.data_source is not None:
-            # TODO: Finalize approach to disposal self.data_source.disconnect()
+        # TODO: Support resource disposal for the database
+        if self.db is not None:
+            # TODO: Finalize approach to disposal self.db.disconnect()
             pass
 
         # Return False to propagate exception to the caller
@@ -134,6 +190,8 @@ class Context(ContextKey, RecordMixin[ContextKey]):
         *,
         dataset: str | None = None,
         identity: str | None = None,
+        is_key_optional: bool = False,
+        is_record_optional: bool = False,
     ) -> TRecord | None:
         """
         Load a single record using a key (if a record is passed instead of a key, it is returned without DB lookup)
@@ -141,14 +199,18 @@ class Context(ContextKey, RecordMixin[ContextKey]):
         Args:
             record_type: Record type to load, error if the result is not this type or its subclass
             record_or_key: Record (returned without lookup) or key in object, tuple or string format
-            dataset: If specified, append to the root dataset of the data source
+            dataset: If specified, append to the root dataset of the database
             identity: Identity token for database access and row-level security
+            is_key_optional: If True, return None when key is none found instead of an error
+            is_record_optional: If True, return None when record is not found instead of an error
         """
-        return self.data_source.load_one(  # noqa
+        return self.db.load_one(  # noqa
             record_type,
             record_or_key,
             dataset=dataset,
             identity=identity,
+            is_key_optional=is_key_optional,
+            is_record_optional=is_record_optional,
         )
 
     def load_many(
@@ -166,10 +228,10 @@ class Context(ContextKey, RecordMixin[ContextKey]):
         Args:
             record_type: Record type to load, error if the result is not this type or its subclass
             records_or_keys: Records (returned without lookup) or keys in object, tuple or string format
-            dataset: If specified, append to the root dataset of the data source
+            dataset: If specified, append to the root dataset of the database
             identity: Identity token for database access and row-level security
         """
-        return self.data_source.load_many(  # noqa
+        return self.db.load_many(  # noqa
             record_type,
             records_or_keys,
             dataset=dataset,
@@ -188,10 +250,10 @@ class Context(ContextKey, RecordMixin[ContextKey]):
 
         Args:
             record_type: Type of the records to load
-            dataset: If specified, append to the root dataset of the data source
+            dataset: If specified, append to the root dataset of the database
             identity: Identity token for database access and row-level security
         """
-        return self.data_source.load_all(  # noqa
+        return self.db.load_all(  # noqa
             record_type,
             dataset=dataset,
             identity=identity,
@@ -211,10 +273,10 @@ class Context(ContextKey, RecordMixin[ContextKey]):
         Args:
             record_type: Record type to load, error if the result is not this type or its subclass
             filter_obj: Instance of 'record_type' whose fields are used for the query
-            dataset: If specified, append to the root dataset of the data source
+            dataset: If specified, append to the root dataset of the database
             identity: Identity token for database access and row-level security
         """
-        return self.data_source.load_filter(  # noqa
+        return self.db.load_filter(  # noqa
             record_type,
             filter_obj,
             dataset=dataset,
@@ -236,7 +298,7 @@ class Context(ContextKey, RecordMixin[ContextKey]):
             dataset: Target dataset as a delimited string, list of levels, or None
             identity: Identity token for database access and row-level security
         """
-        self.data_source.save_one(  # noqa
+        self.db.save_one(  # noqa
             record,
             dataset=dataset,
             identity=identity,
@@ -257,7 +319,7 @@ class Context(ContextKey, RecordMixin[ContextKey]):
             dataset: Target dataset as a delimited string, list of levels, or None
             identity: Identity token for database access and row-level security
         """
-        self.data_source.save_many(  # noqa
+        self.db.save_many(  # noqa
             records,
             dataset=dataset,
             identity=identity,
@@ -277,10 +339,10 @@ class Context(ContextKey, RecordMixin[ContextKey]):
         Args:
             key_type: Key type to delete, used to determine the database table
             key: Key in object, tuple or string format
-            dataset: If specified, append to the root dataset of the data source
+            dataset: If specified, append to the root dataset of the database
             identity: Identity token for database access and row-level security
         """
-        self.data_source.delete_one(  # noqa
+        self.db.delete_one(  # noqa
             key_type,
             key,
             dataset=dataset,
@@ -302,7 +364,7 @@ class Context(ContextKey, RecordMixin[ContextKey]):
             dataset: Target dataset as a delimited string, list of levels, or None
             identity: Identity token for database access and row-level security
         """
-        self.data_source.delete_many(  # noqa
+        self.db.delete_many(  # noqa
             keys,
             dataset=dataset,
             identity=identity,
@@ -313,12 +375,12 @@ class Context(ContextKey, RecordMixin[ContextKey]):
         IMPORTANT: !!! DESTRUCTIVE - THIS WILL PERMANENTLY DELETE ALL RECORDS WITHOUT THE POSSIBILITY OF RECOVERY
 
         Notes:
-            This method will not run unless both data_source_id and database start with 'temp_db_prefix'
-            specified using Dynaconf and stored in 'DataSourceSettings' class
+            This method will not run unless both db_id and database start with 'temp_db_prefix'
+            specified using Dynaconf and stored in 'DbSettings' class
         """
-        # Additional check in context in case a custom data source implementation does not check it
-        self.error_if_not_temp_db(self.data_source.data_source_id)
-        self.data_source.delete_all_and_drop_db()  # noqa
+        # Additional check in context in case a custom database implementation does not check it
+        self.error_if_not_temp_db(self.db.db_id)
+        self.db.delete_all_and_drop_db()  # noqa
 
     def _root_context_field_not_set_error(self, field_name: str) -> None:
         """Error message about a Context field not set."""
@@ -334,13 +396,13 @@ from the current context.
             )
 
     @classmethod
-    def error_if_not_temp_db(cls, data_source_id_or_database_name: str) -> None:
-        """Confirm that data source id or database name matches temp_db_prefix, error otherwise."""
+    def error_if_not_temp_db(cls, db_id_or_database_name: str) -> None:
+        """Confirm that database id or database name matches temp_db_prefix, error otherwise."""
         context_settings = ContextSettings.instance()
-        temp_db_prefix = context_settings.data_source_temp_db_prefix
-        if not data_source_id_or_database_name.startswith(temp_db_prefix):
+        temp_db_prefix = context_settings.db_temp_prefix
+        if not db_id_or_database_name.startswith(temp_db_prefix):
             raise RuntimeError(
-                f"Destructive action on database not permitted because data_source_id or database name "
-                f"'{data_source_id_or_database_name}' does not match temp_db_prefix '{temp_db_prefix}' "
-                f"specified in Dynaconf data source settings ('DataSourceSettings' class)."
+                f"Destructive action on database not permitted because db_id or database name "
+                f"'{db_id_or_database_name}' does not match temp_db_prefix '{temp_db_prefix}' "
+                f"specified in Dynaconf database settings ('DbSettings' class)."
             )

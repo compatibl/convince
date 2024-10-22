@@ -17,10 +17,10 @@ import datetime as dt
 import json
 from typing import List
 from uuid import UUID
+from cl.runtime.records.protocols import TDataDict
 from cl.runtime.serialization.dict_serializer import DictSerializer
-from cl.runtime.serialization.string_value_parser import StringValueCustomType
-from cl.runtime.serialization.string_value_parser import StringValueParser
-from cl.runtime.storage.data_source_types import TDataDict
+from cl.runtime.serialization.string_value_parser_enum import StringValueCustomTypeEnum
+from cl.runtime.serialization.string_value_parser_enum import StringValueParser
 
 
 class FlatDictSerializer(DictSerializer):
@@ -47,8 +47,7 @@ class FlatDictSerializer(DictSerializer):
             if serialized_data.__class__.__name__ in ("date", "datetime", "time"):
                 handled_serialized_value = serialized_data.isoformat()
             elif serialized_data.__class__.__name__ == "bool":
-                # TODO (Roman): think about a more efficient way to store bool
-                handled_serialized_value = "1" if data else "0"
+                handled_serialized_value = self._deserialize_primitive(data, "bool")
             elif serialized_data.__class__.__name__ == "UUID":
                 handled_serialized_value = str(data)
             elif serialized_data.__class__.__name__ == "bytes":
@@ -57,7 +56,6 @@ class FlatDictSerializer(DictSerializer):
                 # TODO (Roman): refactor to avoid nested data json dumps.
                 #  It is enough to do single json dump for the entire object.
                 handled_serialized_value = json.dumps(serialized_data)
-
             return (
                 StringValueParser.add_type_prefix(handled_serialized_value, value_custom_type)
                 if handled_serialized_value is not None
@@ -72,17 +70,17 @@ class FlatDictSerializer(DictSerializer):
             converted_data, custom_type = StringValueParser.parse(data)
 
             if custom_type is not None:
-                if custom_type == StringValueCustomType.date:
+                if custom_type == StringValueCustomTypeEnum.DATE:
                     converted_data = dt.date.fromisoformat(converted_data)
-                elif custom_type == StringValueCustomType.datetime:
+                elif custom_type == StringValueCustomTypeEnum.DATETIME:
                     converted_data = dt.datetime.fromisoformat(converted_data)
-                elif custom_type == StringValueCustomType.time:
+                elif custom_type == StringValueCustomTypeEnum.TIME:
                     converted_data = dt.time.fromisoformat(converted_data)
-                elif custom_type == StringValueCustomType.bool:
-                    converted_data = True if converted_data == "1" else False
-                elif custom_type == StringValueCustomType.uuid:
+                elif custom_type == StringValueCustomTypeEnum.BOOL:
+                    converted_data = self._deserialize_primitive(converted_data, "bool")
+                elif custom_type == StringValueCustomTypeEnum.UUID:
                     converted_data = UUID(converted_data)
-                elif custom_type == StringValueCustomType.bytes:
+                elif custom_type == StringValueCustomTypeEnum.BYTES:
                     converted_data = base64.b64decode(converted_data.encode())
                 else:
                     converted_data = json.loads(converted_data)

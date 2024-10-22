@@ -21,6 +21,7 @@ from typing import Literal
 from typing import Type
 from uuid import UUID
 from typing_extensions import Self
+from cl.runtime.primitive.case_util import CaseUtil
 from cl.runtime.records.class_info import ClassInfo
 from cl.runtime.records.dataclasses_extensions import missing
 from cl.runtime.schema.field_kind import FieldKind
@@ -93,7 +94,7 @@ class FieldDecl:
         from cl.runtime.schema.schema import Schema  # TODO: Avoid circlular dependency
 
         result = cls()
-        result.name = field_name.removesuffix("_")
+        result.name = CaseUtil.snake_to_pascal_case(field_name.removesuffix("_"))
         result.comment = field_comment
 
         # Get origin and args of the field type
@@ -215,6 +216,6 @@ class FieldDecl:
                 # Add to Schema
 
         else:
-            raise RuntimeError(f"Complex type {field_type} is not recognized when building data source schema.")
+            raise RuntimeError(f"Complex type {field_type} is not recognized when building database schema.")
 
         return result

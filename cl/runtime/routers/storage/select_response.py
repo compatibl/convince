@@ -16,20 +16,15 @@ from __future__ import annotations
 from typing import Any
 from typing import Dict
 from typing import List
-from typing import Tuple
-from typing import Type
-import inflection
 from pydantic import BaseModel
 from pydantic import Field
 from cl.runtime.context.context import Context
+from cl.runtime.primitive.case_util import CaseUtil
 from cl.runtime.records.class_info import ClassInfo
 from cl.runtime.routers.schema.type_request import TypeRequest
 from cl.runtime.routers.schema.type_response_util import TypeResponseUtil
 from cl.runtime.routers.storage.select_request import SelectRequest
-from cl.runtime.serialization.dict_serializer import DictSerializer
-from cl.runtime.serialization.string_serializer import StringSerializer
 from cl.runtime.serialization.ui_dict_serializer import UiDictSerializer
-from cl.runtime.storage.data_source_types import TPrimitive
 
 SelectResponseSchema = Dict[str, Any]
 SelectResponseData = List[Dict[str, Any]]
@@ -51,26 +46,27 @@ class SelectResponse(BaseModel):
         # Default response when running locally without authorization
         type_decl_dict = TypeResponseUtil.get_type(TypeRequest(name=request.type_, module=request.module, user="root"))
 
-        record_module = inflection.underscore(request.module)
+        record_module = request.module
         record_class = request.type_
         record_type = ClassInfo.get_class_type(f"{record_module}.{record_class}")
 
-        # Get data source from the current context
-        data_source = Context.current().data_source
+        # Get database from the current context
+        db = Context.current().db
 
         # TODO (Roman): replace temporary load_all to load_filter
-        if not hasattr(data_source, "load_all"):
+        if not hasattr(db, "load_all"):
             raise RuntimeError(
-                f"Currently data source need to implement load_all() method for select records by type. "
-                f"Data source {data_source.__class__.__name__} doesn't have load_all()."
+                f"Currently database need to implement load_all() method for select records by type. "
+                f"Database {db.__class__.__name__} doesn't have load_all()."
             )
 
         # load records by type
-        records = data_source.load_all(record_type)
+        records = db.load_all(record_type)
+        records = list(records)
 
         # TODO: Refactor the code below
 
-        ui_serializer = UiDictSerializer(pascalize_keys=True)
+        ui_serializer = UiDictSerializer()
 
         # TODO (Roman): check if we are calling /select somewhere other than the main grid.
         serialized_records = tuple(ui_serializer.serialize_record_for_table(record) for record in records)

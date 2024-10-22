@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import pytest
+import os
 from pathlib import Path
 import pandas as pd
+from cl.runtime.context.env_util import EnvUtil
 from cl.runtime.context.testing_context import TestingContext
 from cl.runtime.plots.confusion_matrix_plot import ConfusionMatrixPlot
 from cl.runtime.plots.confusion_matrix_plot_style import ConfusionMatrixPlotStyle
@@ -25,30 +27,23 @@ def test_smoke(local_dir_fixture):
     raw_data = pd.read_csv(Path(__file__).resolve().parent / "./test_confusion_matrix_plot.csv")
 
     with TestingContext() as context:
-        matrix_plot = ConfusionMatrixPlot()
-        matrix_plot.title = "Confusion Matrix"
-        matrix_plot.expected_categories = raw_data["True Category"].values.tolist()
-        matrix_plot.received_categories = raw_data["Predicted"].values.tolist()
-
-        fig = matrix_plot.create_figure()
-    fig.savefig("test_confusion_matrix_plot.test_smoke.png")
+        plot = ConfusionMatrixPlot(plot_id="confusion_matrix")
+        plot.title = "Confusion Matrix"
+        plot.expected_categories = raw_data["True Category"].values.tolist()
+        plot.received_categories = raw_data["Predicted"].values.tolist()
+        plot.save_png()
 
 
-def test_smoke_dark_theme(local_dir_fixture):
+def test_dark_theme(local_dir_fixture):
     raw_data = pd.read_csv(Path(__file__).resolve().parent / "./test_confusion_matrix_plot.csv")
 
     with TestingContext() as context:
-        matrix_plot_style = ConfusionMatrixPlotStyle()
-        matrix_plot_style.dark_theme = True
-
-        matrix_plot = ConfusionMatrixPlot()
-        matrix_plot.title = "Confusion Matrix"
-        matrix_plot.expected_categories = raw_data["True Category"].values.tolist()
-        matrix_plot.received_categories = raw_data["Predicted"].values.tolist()
-        matrix_plot.style = matrix_plot_style
-
-        fig = matrix_plot.create_figure()
-    fig.savefig("test_confusion_matrix_plot.test_smoke_dark_theme.png")
+        plot = ConfusionMatrixPlot(plot_id="matrix_plot")
+        plot.title = "Confusion Matrix"
+        plot.expected_categories = raw_data["True Category"].values.tolist()
+        plot.received_categories = raw_data["Predicted"].values.tolist()
+        plot.style = ConfusionMatrixPlotStyle(dark_theme=True)
+        plot.save_png()
 
 
 if __name__ == "__main__":

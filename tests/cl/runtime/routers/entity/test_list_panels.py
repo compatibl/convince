@@ -26,14 +26,14 @@ requests = [
     {"type": "StubViewers", "key": "L", "dataset": "xyz", "user": "TestUser"},
 ]
 expected_result = [
-    {"Name": "Instance Viewer 1A"},
-    {"Name": "Instance Viewer 1B"},
-    {"Name": "Instance Viewer 1C"},
-    {"Name": "Instance Viewer 1D"},
-    {"Name": "Instance Viewer 2A"},
-    {"Name": "Instance Viewer 2B"},
-    {"Name": "Instance Viewer 2C"},
-    {"Name": "Instance Viewer 3A"},
+    {"Name": "Instance 1A"},
+    {"Name": "Instance 1B"},
+    {"Name": "Instance 1C"},
+    {"Name": "Instance 1D"},
+    {"Name": "Instance 2A"},
+    {"Name": "Instance 2B"},
+    {"Name": "Instance 2C"},
+    {"Name": "Instance 3A"},
 ]
 
 

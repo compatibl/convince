@@ -12,68 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-from typing import List
-from typing import Pattern
-
-_first_cap_re: Pattern = re.compile("(.)([A-Z][a-z]+)")
-_all_cap_re: Pattern = re.compile("([a-z0-9])([A-Z])")
-_to_pascal_re: Pattern = re.compile("(?:^|_+)(.)")
-
-eol: str = "\n"
-"""Literal string for newline."""
+import hashlib
+from typing import TypeGuard
 
 
 class StringUtil:
-    """Utilities for case conversion and other operations on string."""
+    """Utilities for string, other than case conversion which is in CaseUtil."""
 
     @classmethod
-    def to_pascal_case(cls, value: str) -> str:
-        """Converts each dot-delimited token to PascalCase by replacing underscores with capital letters."""
-        input_tokens = value.split(".")
-        result_tokens = [_to_pascal_re.sub(lambda match: f"{match.group(1).upper()}", x) for x in input_tokens]
-        result = ".".join(result_tokens)
+    def is_empty(cls, value: str | None) -> bool:
+        """Returns true if the string is None or ''."""
+        return value is None or value == ""
+
+    @classmethod
+    def is_not_empty(cls, value: str | None) -> TypeGuard[str]:
+        """Returns true if the string is not None or ''."""
+        return value is not None and value != ""
+
+    @classmethod
+    def md5_hex(cls, value: str | None) -> str:
+        """Return MD5 hash in hexadecimal format after converting to lowercase and removing all whitespace."""
+        return cls._md5(value).hexdigest()
+
+    @classmethod
+    def _md5(cls, value: str | None):
+        """Return MD5 hash object after converting to lowercase and removing all whitespace."""
+
+        # Convert to lowercase and remove all whitespace including EOL for any OS
+        value = value.lower()
+        value = value.replace(" ", "").replace("\n", "").replace("\r", "")
+
+        # Encode to bytes using UTF-8 and get the MD5 hash in hexadecimal format
+        result = hashlib.md5(value.encode("utf-8"))
         return result
-
-    @classmethod
-    def to_snake_case(cls, value: str) -> str:
-        """
-        Converts each dot-delimited token to snake_case by inserting underscore before each capital
-        letter and then changing case to lower.
-        """
-        input_tokens = value.split(".")
-        result_tokens = [_first_cap_re.sub(r"\1_\2", x).lower() for x in input_tokens]
-        result = ".".join(result_tokens)
-        return result
-
-    @classmethod
-    def split_by_uppercase(cls, value: str) -> List[str]:
-        """Splits input string by any uppercase char."""
-
-        parts = re.findall("[A-Z][^A-Z]*", value)
-        if value and not parts:
-            parts = [value]
-
-        return parts
-
-    @classmethod
-    def list_to_label(cls, headers: List[str]) -> List[str]:
-        """
-        Convert strings to words separated by space that start from upper case for all elements of input list.
-        """
-
-        return [cls.header_to_label(header) for header in headers]
-
-    @classmethod
-    def header_to_label(cls, header: str) -> str:
-        """
-        Convert string to words separated by space that start from upper case for all elements of input list.
-        """
-        return " ".join(re.findall(r"[A-Z][^A-Z]*", cls.to_pascal_case(header)))
-
-    @classmethod
-    def replace_prefix(cls, value: str, old_prefix: str, new_prefix: str) -> str:
-        """Replaces old prefix with new if it starts with it, otherwise returns as is."""
-        if value.startswith(old_prefix):
-            return new_prefix + value[len(old_prefix) :]
-        return value
